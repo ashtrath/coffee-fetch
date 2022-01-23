@@ -11,7 +11,7 @@ kernel="$(uname -r)"
 wm="${XDG_CURRENT_DESKTOP#*:}"
 shell="${SHELL##*/}"
 packages="$(pacman -Qq | wc -l)"
-uptime="$(uptime -p | cut -b 4-22 | sed -i 's/minutes/mins/g')"
+uptime="$(uptime -p | cut -b 4-22 | sed 's/minutes/mins/g')"
 
 ## Colors
 magenta="\e[35m"
