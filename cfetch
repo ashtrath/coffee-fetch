@@ -38,16 +38,20 @@ getPackages() {
 
   case $manager in
     pacman) packages="$(pacman -Qq | wc -l)" ;;
-    nix-env) packages="$(nix-store -q --requisites /run/current-system/sw | wc -l) (nix)" ;;
-    xbps-query) packages="$(xbps-query -l | wc -l) (xbps)" ;;
-    apt) packages="$(dpkg-query -f '${binary:Package}\n' -W | wc -l) (apt)" ;;
-    dnf) packages="$(dnf list installed | wc -l) (dnf)" ;;
-    rpm) packages="$(rpm -qa --last| wc -l) (rpm)" ;;
+    nix-env) packages="$(nix-store -q --requisites /run/current-system/sw | wc -l)" ;;
+    xbps-query) packages="$(xbps-query -l | wc -l)" ;;
+    apt) packages="$(dpkg-query -f '${binary:Package}\n' -W | wc -l)" ;;
+    dnf) packages="$(dnf list installed | wc -l)" ;;
+    rpm) packages="$(rpm -qa --last| wc -l)" ;;
   esac
 
   if ((packages == 0)); then
     packages="None"
   fi
+
+	if [ $manager == "nix-env" ]; then
+		manager="nix"
+	fi
 
   printf "${c5}  ${c7}%s (%s)" "$packages" "$manager"
 }
