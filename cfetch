@@ -1,0 +1,119 @@
+#!/bin/sh
+
+# Dont use unicode
+LC_ALL=C
+LANG=C
+
+### Get System Info
+getUser() {
+  printf "${c4}$(whoami)${c1}@${c2}$(hostname)"
+}
+
+getDistro() {
+  arch="$(uname -m)"
+  if [[ -f /bedrock/etc/bedrock-release && -z $BEDROCK_RESTRICT ]]; then
+    distro="Bedrock Linux"
+  else
+    while IFS='=' read -r key val; do
+      case $key in
+        PRETTY_NAME) distro=$val ;;
+      esac
+    done < /etc/os-release
+  fi
+
+  printf "${c5}  ${c7}%s" "$distro $arch"
+}
+
+getKernel() {
+  printf "${c5}  ${c7}%s" "$(uname -r)"
+}
+
+getWM() {
+  printf "${c5}  ${c7}%s" "${XDG_CURRENT_DESKTOP#*:-$DESKTOP_SESSION}"
+}
+
+getPackages() {
+  manager=$(which \pacman nix-env xbps-query apt dnf rpm 2> /dev/null)
+  manager=${manager##*/}
+
+  case $manager in
+    pacman) packages="$(pacman -Qq | wc -l)" ;;
+    nix-env) packages="$(nix-store -q --requisites /run/current-system/sw | wc -l) (nix)" ;;
+    xbps-query) packages="$(xbps-query -l | wc -l) (xbps)" ;;
+    apt) packages="$(dpkg-query -f '${binary:Package}\n' -W | wc -l) (apt)" ;;
+    dnf) packages="$(dnf list installed | wc -l) (dnf)" ;;
+    rpm) packages="$(rpm -qa --last| wc -l) (rpm)" ;;
+  esac
+
+  if ((packages == 0)); then
+    packages="None"
+  fi
+
+  printf "${c5}  ${c7}%s (%s)" "$packages" "$manager"
+}
+
+
+getUptime() {
+  IFS=. read -r s _ < /proc/uptime 
+
+  # Convert uptime to readable value
+  d="$((s / 60 / 60 / 24))"
+  h="$((s / 60 / 60 % 24))"
+  m="$((s / 60 % 60))"
+
+  # Plurals
+  [ "$d" -gt 1 ] && dp=s
+  [ "$h" -gt 1 ] && hp=s
+  [ "$m" -gt 1 ] && mp=s
+  [ "$s" -gt 1 ] && sp=s
+
+  # Hide empty fields.
+  [ "$d" = 0 ] && d=
+  [ "$h" = 0 ] && h=
+  [ "$m" = 0 ] && m=
+  [ "$m" != "" ] && s=
+
+  # Make the output of uptime smaller.
+  [ "$d" ] && uptime="$d day$dp, "
+  [ "$h" ] && uptime="$uptime$h hour$hp, "
+  [ "$m" ] && uptime="$uptime$m min$mp"
+  [ "$s" ] && uptime="$uptime$s sec$sp"
+
+  uptime=${uptime%, }
+  printf "${c5}  ${c7}%s" "$uptime"
+}
+
+getPalette() {
+  for i in 1 2 3 4 5 6; do
+		printf "[9%sm%s" "$i" "   "
+	done
+
+	printf "%s" "[0m"
+}
+
+### Colors Variable
+bo='\e[1m'  #bold
+c0='\e[30m' #black
+c1='\e[31m' #red
+c2='\e[32m' #green
+c3='\e[33m' #yellow
+c4='\e[34m' #blue
+c5='\e[35m' #magenta
+c6='\e[36m' #cyan
+c7='\e[37m' #white
+c8='\e[90m' #grey
+rs='\e[0m'  #reset
+
+bb="$bo $c4" #bold blue
+bg="$bo $c2" #bold green
+
+### Print Fetch
+printf "
+${bb}    ) )     ${bo}%s
+${bb}   ( (      ${bo}%s
+${bg} ........   ${bo}%s
+${bg} |      |]  ${bo}%s
+${bg} \      /   ${bo}%s
+${bg}  '____'    ${bo}%s
+             %s
+" "$(getUser)" "$(getDistro)" "$(getKernel)" "$(getWM)" "$(getPackages)" "$(getUptime)" "$(getPalette)"
