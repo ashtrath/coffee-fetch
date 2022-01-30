@@ -1,129 +1,203 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
-# Dont use unicode
-LC_ALL=C
-LANG=C
+# shellcheck disable=SC2166,SC2145,SC2009,SC2034
 
-### Stop fetch if user is using Mac
-if [ $(uname) = "Darwin" ]; then
-	printf "No MacOS support yet"
-	exit 0
-fi
+# Disable unicode to speeds-up.
+export LANG='POSIX'
 
-### Get System Info
-getUser() {
-  printf "${c4}$(whoami)${c1}@${c2}$(hostname)"
+# Built-in `wc -l` alternative.
+wc_l()
+{
+    while IFS= read -r line || [ -n "$line" ]; do
+        lines=$((lines+1))
+    done </dev/stdin
+
+    printf '%s\n' "$lines"
+
+    lines=
 }
 
-getDistro() {
-  arch="$(uname -m)"
-  if [[ -f /bedrock/etc/bedrock-release && -z $BEDROCK_RESTRICT ]]; then
-    distro="Bedrock Linux"
-  else
-    while IFS='=' read -r key val; do
-      case $key in
-        PRETTY_NAME) distro=$val ;;
-      esac
-    done < /etc/os-release
-  fi
+# Parse kernel, version, and machine architecture.
+for STRING in $(uname -mrs); do
+    N=$((N+1))
+    case "$N" in
+        1) KERN="$STRING"
+        ;;
+        2) KVER="$STRING"
+        ;;
+        3) MACH="$STRING"
+        ;;
+    esac
+done
 
-  printf "${c5}  ${c7}%s" "$distro $arch"
+# Determine current OS.
+case "$KERN" in
+    Linux|GNU*|*BSD|DragonFly|Bitrig)
+       :
+    ;;
+    *) printf '%s\n' "Unknown OS detected! '${KERN}' currently not supported yet." >&2
+       exit 1
+    ;;
+esac
+
+getUser()
+{
+    printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(hostname)}"
 }
 
-getKernel() {
-  printf "${c5}  ${c7}%s" "$(uname -r)"
+getDistro()
+{
+    if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
+        PRETTY_NAME='Bedrock Linux'
+    elif [ -f '/etc/os-release' ]; then
+        . /etc/os-release
+    else
+        PRETTY_NAME='Unknown'
+    fi
+
+    printf "${c5}${@}  ${c7}%s" "${PRETTY_NAME:-${NAME}} ${MACH:-Unknown}"
 }
 
-getWM() {
-  printf "${c5}  ${c7}%s" "${XDG_CURRENT_DESKTOP#*:-$DESKTOP_SESSION}"
+getKernel()
+{
+    printf "${c5}${@}  ${c7}%s" "${KVER:-Unknown}"
 }
 
-getPackages() {
-  manager=$(which \pacman nix-env xbps-query apt dnf rpm 2> /dev/null)
-  manager=${manager##*/}
+getWM()
+{
+    if [ -x "$(command -v xprop)" ]; then
+        XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)" \
+        XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)" \
+        WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}" \
+        WM="${WM%%\"*}"
+    fi
 
-  case $manager in
-    pacman) packages="$(pacman -Qq | wc -l)" ;;
-    nix-env) packages="$(nix-store -q --requisites /run/current-system/sw | wc -l)" ;;
-    xbps-query) packages="$(xbps-query -l | wc -l)" ;;
-    apt) packages="$(dpkg-query -f '${binary:Package}\n' -W | wc -l)" ;;
-    dnf) packages="$(dnf list installed | wc -l)" ;;
-    rpm) packages="$(rpm -qa --last| wc -l)" ;;
-  esac
+    if [ -z "$WM" -o "$WM" = 'LG3D' ]; then
+        WM="$(ps -e | grep -m1 -o \
+                               -e 'sway' \
+                               -e 'kiwmi' \
+                               -e 'wayfire' \
+                               -e 'sowm' \
+                               -e 'catwm' \
+                               -e 'fvwm' \
+                               -e 'dwm' \
+                               -e '2bwm' \
+                               -e 'monsterwm' \
+                               -e 'tinywm' \
+                               -e 'xmonad')"
+    fi
 
-  if ((packages == 0)); then
-    packages="None"
-  fi
+    printf "${c5}${@}  ${c7}%s" "${WM:-Unknown}"
+}
 
-	if [ $manager == "nix-env" ]; then
-		manager="nix"
-	fi
+getPackages()
+{
+    for MANAGER in apt \
+                   dnf \
+                   emerge \
+                   nix-env \
+                   pacman \
+                   rpm \
+                   xbps-query
+    do
+        PKG_MNGR="$(command -v "$MANAGER")"
+        [ ! -x "$PKG_MNGR" ] || break
+    done
 
-  printf "${c5}  ${c7}%s (%s)" "$packages" "$manager"
+    case "${PKG_MNGR##*/}" in
+        apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
+        ;;
+        dnf       ) GET_PKGS="$(dnf list installed)"
+        ;;
+        emerge    ) GET_PKGS="$(for P in /var/db/pkg/*/*; do echo "$P"; done)"
+        ;;
+        nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
+                    PKG_MNGR='nix'
+        ;;
+        pacman    ) GET_PKGS="$(pacman -Qq)"
+        ;;
+        rpm       ) GET_PKGS="$(rpm -qa --last)"
+        ;;
+        xbps-query) GET_PKGS="$(xbps-query -l)"
+        ;;
+    esac
+
+    COUNT="$(wc_l <<- EOF
+				${GET_PKGS}
+			EOF
+           )"
+
+    printf "${c5}${@}  ${c7}%s (%s)" "$COUNT" "${PKG_MNGR##*/}"
 }
 
 
-getUptime() {
-  IFS=. read -r s _ < /proc/uptime 
+getUptime()
+{
+    IFS=. read -r s _ </proc/uptime 
 
-  # Convert uptime to readable value
-  d="$((s / 60 / 60 / 24))"
-  h="$((s / 60 / 60 % 24))"
-  m="$((s / 60 % 60))"
+    # Convert uptime into readable value.
+    d="$((s / 60 / 60 / 24))"
+    h="$((s / 60 / 60 % 24))"
+    m="$((s / 60 % 60))"
 
-  # Plurals
-  [ "$d" -gt 1 ] && dp=s
-  [ "$h" -gt 1 ] && hp=s
-  [ "$m" -gt 1 ] && mp=s
-  [ "$s" -gt 1 ] && sp=s
+    # Plurals.
+    [ "$d" -gt 1 ] && dp=s
+    [ "$h" -gt 1 ] && hp=s
+    [ "$m" -gt 1 ] && mp=s
+    [ "$s" -gt 1 ] && sp=s
 
-  # Hide empty fields.
-  [ "$d" = 0 ] && d=
-  [ "$h" = 0 ] && h=
-  [ "$m" = 0 ] && m=
-  [ "$m" != "" ] && s=
+    # Hide empty fields.
+    [ "$d" = 0 ] && d=
+    [ "$h" = 0 ] && h=
+    [ "$m" = 0 ] && m=
+    [ -n  "$m" ] && s=
 
-  # Make the output of uptime smaller.
-  [ "$d" ] && uptime="$d day$dp, "
-  [ "$h" ] && uptime="$uptime$h hour$hp, "
-  [ "$m" ] && uptime="$uptime$m min$mp"
-  [ "$s" ] && uptime="$uptime$s sec$sp"
+    # Make the output of uptime smaller.
+    [ "$d" ] && UPTIME="${d} day${dp}, "
+    [ "$h" ] && UPTIME="${UPTIME}${h} hour${hp}, "
+    [ "$m" ] && UPTIME="${UPTIME}${m} min${mp}"
+    [ "$s" ] && UPTIME="${UPTIME}${s} sec${sp}"
 
-  uptime=${uptime%, }
-  printf "${c5}  ${c7}%s" "$uptime"
+    printf "${c5}${@}  ${c7}%s" "${UPTIME%,\ }"
 }
 
-getPalette() {
-  for i in 1 2 3 4 5 6; do
-		printf "[9%sm%s" "$i" "   "
-	done
-
-	printf "%s" "[0m"
+getPalette()
+{
+    for SEQ in 1 2 3 4 5 6; do
+        printf "\033[9%sm%s\033[0m" "$SEQ" '  '
+    done
 }
 
-### Colors Variable
-bo='\e[1m'  #bold
-c0='\e[30m' #black
-c1='\e[31m' #red
-c2='\e[32m' #green
-c3='\e[33m' #yellow
-c4='\e[34m' #blue
-c5='\e[35m' #magenta
-c6='\e[36m' #cyan
-c7='\e[37m' #white
-c8='\e[90m' #grey
-rs='\e[0m'  #reset
+# ANSI colour sequences.
+bo='\033[1m'     # Bold.
+c0='\033[30m'    # Black.
+c1='\033[31m'    # Red.
+c2='\033[32m'    # Green.
+c3='\033[33m'    # Yellow.
+c4='\033[34m'    # Blue.
+c5='\033[35m'    # Magenta.
+c6='\033[36m'    # Cyan.
+c7='\033[37m'    # White.
+c8='\033[90m'    # Grey.
+rs='\033[0m'     # Reset.
+bb="${bo} ${c4}" # Bold blue.
+bg="${bo} ${c2}" # Bold green.
 
-bb="$bo $c4" #bold blue
-bg="$bo $c2" #bold green
-
-### Print Fetch
-printf "
+# Print ASCII coffee and relax.
+printf                 "
 ${bb}    ) )     ${bo}%s
 ${bb}   ( (      ${bo}%s
 ${bg} ........   ${bo}%s
 ${bg} |      |]  ${bo}%s
 ${bg} \      /   ${bo}%s
 ${bg}  '____'    ${bo}%s
-             %s
-" "$(getUser)" "$(getDistro)" "$(getKernel)" "$(getWM)" "$(getPackages)" "$(getUptime)" "$(getPalette)"
+             %s      \n" \
+"$(getUser            )" \
+"$(getDistro     ''  )" \
+"$(getKernel     ''  )" \
+"$(getWM         ''  )" \
+"$(getPackages   ''  )" \
+"$(getUptime     ''  )" \
+"$(getPalette         )"
+
+exit ${?}
