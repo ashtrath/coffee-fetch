@@ -12,7 +12,7 @@ wc_l()
         lines=$((lines+1))
     done </dev/stdin
 
-    printf '%s\n' "$lines"
+    echo "$lines"
 
     lines=
 }
@@ -35,7 +35,8 @@ case "$KERN" in
     Linux|GNU*|*BSD|DragonFly|Bitrig)
        :
     ;;
-    *) printf '%s\n' "Unknown OS detected! '${KERN}' currently not supported yet." >&2
+    *) echo 'Unknown OS detected!' \
+            "'${KERN}' currently not supported yet." >&2
        exit 1
     ;;
 esac
