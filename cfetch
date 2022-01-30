@@ -155,7 +155,7 @@ getPackages()
         ;;
         dnf       ) GET_PKGS="$(dnf list installed)"
         ;;
-        emerge    ) GET_PKGS="$(for P in /var/db/pkg/*/*; do echo "$P"; done)"
+        emerge    ) GET_PKGS="$(printf '%s\n' /var/db/pkg/*/*)"
         ;;
         nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
                     PKG_MNGR='nix'
