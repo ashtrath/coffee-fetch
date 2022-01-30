@@ -65,14 +65,30 @@ getKernel()
 
 getWM()
 {
-    if [ -x "$(command -v xprop)" ]; then
+    if [ -n "$DESKTOP_SESSION" ]; then
+
+        DE="${DESKTOP_SESSION##*/}"
+
+    elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
+
+        DE='GNOME'
+
+    elif [ -n "$MATE_DESKTOP_SESSION_ID" ]; then
+
+        DE='MATE'
+
+    elif [ -n "$TDE_FULL_SESSION" ]; then
+
+        DE='Trinity'
+
+    elif [ -x "$(command -v xprop)" ]; then
+
         XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)" \
         XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)" \
         WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}" \
         WM="${WM%%\"*}"
-    fi
 
-    if [ -z "$WM" -o "$WM" = 'LG3D' ]; then
+    else
 
         case "$KERN" in
             *OpenBSD*) PS_FLAGS='x -c'
@@ -115,7 +131,9 @@ getWM()
 
     fi
 
-    printf "${c5}${@}  ${c7}%s" "${WM:-Unknown}"
+    DE_WM="${DE:-${WM}}"
+
+    printf "${c5}${@}  ${c7}%s" "${DE_WM:-Unknown}"
 }
 
 getPackages()
