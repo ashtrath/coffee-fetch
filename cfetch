@@ -2,10 +2,10 @@
 
 # shellcheck disable=SC2166,SC2145,SC2009,SC2034
 
-# Disable unicode to speeds-up.
+# Disable UTF-8 to speeds up script execution.
 export LANG='POSIX'
 
-# Built-in `wc -l` alternative.
+# Built-in `wc -l` as alternative command.
 wc_l()
 {
     while IFS= read -r line || [ -n "$line" ]; do
@@ -84,7 +84,8 @@ getWM()
                                -e '2bwm' \
                                -e 'monsterwm' \
                                -e 'tinywm' \
-                               -e 'xmonad')"
+                               -e 'xmonad'
+            )"
     fi
 
     printf "${c5}${@}  ${c7}%s" "${WM:-Unknown}"
@@ -164,7 +165,7 @@ getUptime()
 getPalette()
 {
     for SEQ in 1 2 3 4 5 6; do
-        printf "\033[9%sm%s\033[0m" "$SEQ" '  '
+        printf '\033[9%sm%s\033[0m' "$SEQ" '  '
     done
 }
 
