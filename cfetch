@@ -1,21 +1,9 @@
 #!/usr/bin/env sh
 
-# shellcheck disable=SC2166,SC2145,SC2009,SC2034,SC3028
+# shellcheck disable=SC3028,SC2166,SC2009,SC2034
 
 # Disable UTF-8 to speeds up script execution.
 export LANG='POSIX'
-
-# Built-in `wc -l` as alternative command.
-wc_l()
-{
-    while IFS= read -r line || [ -n "$line" ]; do
-        lines=$((lines+1))
-    done </dev/stdin
-
-    echo "$lines"
-
-    lines=
-}
 
 # Parse kernel, version, and machine architecture.
 for STRING in $(uname -mrs); do
@@ -59,12 +47,12 @@ getDistro()
         PRETTY_NAME='Unknown'
     fi
 
-    printf "${c5}${@}  ${c7}%s" "${PRETTY_NAME:-${NAME}} ${MACH:-Unknown}"
+    printf "${c5}${*}  ${c7}%s" "${PRETTY_NAME:-${NAME}} ${MACH:-Unknown}"
 }
 
 getKernel()
 {
-    printf "${c5}${@}  ${c7}%s" "${KVER:-Unknown}"
+    printf "${c5}${*}  ${c7}%s" "${KVER:-Unknown}"
 }
 
 getWM()
@@ -127,7 +115,7 @@ getWM()
 
     DE_WM="${DE:-${WM}}"
 
-    printf "${c5}${@}  ${c7}%s" "${DE_WM:-Unknown}"
+    printf "${c5}${*}  ${c7}%s" "${DE_WM:-Unknown}"
 }
 
 getPackages()
@@ -162,14 +150,14 @@ getPackages()
         ;;
     esac
 
-    COUNT="$(wc_l <<- EOF
+    COUNT="$(wc -l <<- EOF
 				${GET_PKGS}
 			EOF
            )"
 
     [ "$COUNT" -eq 1 ] && COUNT='?' PKG_MNGR='Unknown'
 
-    printf "${c5}${@}  ${c7}%s (%s)" "$COUNT" "${PKG_MNGR##*/}"
+    printf "${c5}${*}  ${c7}%s (%s)" "$COUNT" "${PKG_MNGR##*/}"
 }
 
 
@@ -200,7 +188,7 @@ getUptime()
     [ -n "$m" ] && UPTIME="${UPTIME}${m} min${mp}"
     [ -n "$s" ] && UPTIME="${UPTIME}${s} sec${sp}"
 
-    printf "${c5}${@}  ${c7}%s" "${UPTIME%,\ }"
+    printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
 }
 
 getPalette()
