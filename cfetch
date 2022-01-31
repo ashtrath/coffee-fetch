@@ -2,6 +2,9 @@
 
 # shellcheck disable=SC3028,SC2166,SC2009,SC2034
 
+# Ensure all binaries are executable, unalias all.
+unalias -a
+
 # Disable UTF-8 to speeds up script execution.
 export LANG='POSIX'
 
@@ -46,7 +49,7 @@ getDistro()
         PRETTY_NAME='Unknown'
     fi
 
-    printf "${c5}${*}  ${c7}%s" "${PRETTY_NAME:-${NAME}} ${MACH:-Unknown}"
+    printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME}}" "$MACH"
 }
 
 getKernel()
@@ -65,13 +68,14 @@ getWM()
     elif [ -n "$TDE_FULL_SESSION" ]; then
         DE='Trinity'
     elif [ -x "$(command -v xprop)" ]; then
-        XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)" \
-        XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)" \
-        WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}" \
+        XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)"
+        XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)"
+        WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}"
         WM="${WM%%\"*}"
     fi
 
     if [ -z "${DE:-${WM}}" ]; then
+
         case "$KERN" in
             *OpenBSD*) PS_FLAGS='x -c'
             ;;
@@ -110,6 +114,7 @@ getWM()
                                     -e westford \
                                     -e weston
             )"
+
     fi
 
     DE_WM="${DE:-${WM}}"
@@ -127,11 +132,13 @@ getPackages()
                    rpm \
                    xbps-query
     do
-        PKG_MNGR="$(command -v "$MANAGER")"
-        [ ! -x "$PKG_MNGR" ] || break
+        if [ -x "$(command -v "$MANAGER")" ]; then
+            PKG_MNGR="$MANAGER"
+            break
+        fi
     done
 
-    case "${PKG_MNGR##*/}" in
+    case "$PKG_MNGR" in
         apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
         ;;
         dnf       ) GET_PKGS="$(dnf list installed)"
@@ -149,16 +156,19 @@ getPackages()
         ;;
     esac
 
-    COUNT="$(wc -l <<- EOF
-				${GET_PKGS}
-			EOF
-           )"
+    TOTAL_PKGS="$(wc -l <<- EOF
+					${GET_PKGS}
+				EOF
+                )"
 
-    [ "$COUNT" -eq 1 ] && COUNT='?' PKG_MNGR='Unknown'
+    case "$TOTAL_PKGS" in
+        0|1) TOTAL_PKGS='?'
+             PKG_MNGR='Unknown'
+        ;;
+    esac
 
-    printf "${c5}${*}  ${c7}%s (%s)" "$COUNT" "${PKG_MNGR##*/}"
+    printf "${c5}${*}  ${c7}%s (%s)" "$TOTAL_PKGS" "$PKG_MNGR"
 }
-
 
 getUptime()
 {
@@ -192,9 +202,7 @@ getUptime()
 
 getPalette()
 {
-    for SEQ in 1 2 3 4 5 6; do
-        printf '\033[9%sm%s\033[0m' "$SEQ" '  '
-    done
+    printf "\033[9%sm${*}  \033[0m" 1 2 3 4 5 6
 }
 
 # ANSI colour sequences.
@@ -227,6 +235,6 @@ ${bg}  '____'    ${rs}%s
 "$(getWM         ''  )" \
 "$(getPackages   ''  )" \
 "$(getUptime     ''  )" \
-"$(getPalette         )"
+"$(getPalette    ''  )"
 
 exit ${?}
