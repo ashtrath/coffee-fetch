@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# shellcheck disable=SC2166,SC2145,SC2009,SC2034
+# shellcheck disable=SC2166,SC2145,SC2009,SC2034,SC3028
 
 # Disable UTF-8 to speeds up script execution.
 export LANG='POSIX'
@@ -195,10 +195,10 @@ getUptime()
     [  -n  "$m"  ] && s=
 
     # Make the output of uptime smaller.
-    [ "$d" ] && UPTIME="${d} day${dp}, "
-    [ "$h" ] && UPTIME="${UPTIME}${h} hour${hp}, "
-    [ "$m" ] && UPTIME="${UPTIME}${m} min${mp}"
-    [ "$s" ] && UPTIME="${UPTIME}${s} sec${sp}"
+    [ -n "$d" ] && UPTIME="${d} day${dp}, "
+    [ -n "$h" ] && UPTIME="${UPTIME}${h} hour${hp}, "
+    [ -n "$m" ] && UPTIME="${UPTIME}${m} min${mp}"
+    [ -n "$s" ] && UPTIME="${UPTIME}${s} sec${sp}"
 
     printf "${c5}${@}  ${c7}%s" "${UPTIME%,\ }"
 }
