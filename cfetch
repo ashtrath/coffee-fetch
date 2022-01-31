@@ -43,7 +43,10 @@ esac
 
 getUser()
 {
-    printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(hostname)}"
+    HOST="${HOST:-${HOSTNAME}}"
+    HOST="${HOST:-$(hostname 2>/dev/null)}"
+
+    printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
 }
 
 getDistro()
@@ -81,7 +84,7 @@ getWM()
         WM="${WM%%\"*}"
     fi
 
-    if [ -z "$DE" -a -z "$WM" ]; then
+    if [ -z "${DE:-${WM}}" ]; then
         case "$KERN" in
             *OpenBSD*) PS_FLAGS='x -c'
             ;;
