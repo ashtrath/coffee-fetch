@@ -228,11 +228,11 @@ bg="${bo} ${c2}" # Bold green.
 # Print ASCII coffee and relax.
 printf                 "
 ${bb}    ) )     ${bo}%s
-${bb}   ( (      ${bo}%s
-${bg} ........   ${bo}%s
-${bg} |      |]  ${bo}%s
-${bg} \      /   ${bo}%s
-${bg}  '____'    ${bo}%s
+${bb}   ( (      ${rs}%s
+${bg} ........   ${rs}%s
+${bg} |      |]  ${rs}%s
+${bg} \      /   ${rs}%s
+${bg}  '____'    ${rs}%s
              %s      \n" \
 "$(getUser            )" \
 "$(getDistro     ''  )" \
