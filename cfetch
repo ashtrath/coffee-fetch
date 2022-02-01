@@ -10,193 +10,188 @@ export LANG='POSIX'
 
 # Parse kernel, version, and machine architecture.
 for STRING in $(uname -mrs); do
-    N=$((N+1))
-    case "$N" in
-        1) KERN="$STRING"
-        ;;
-        2) KVER="$STRING"
-        ;;
-        3) MACH="$STRING"
-        ;;
-    esac
+  N=$((N+1))
+  case "$N" in
+    1) KERN="$STRING"
+    ;;
+    2) KVER="$STRING"
+    ;;
+    3) MACH="$STRING"
+    ;;
+  esac
 done
 
 # Determine current OS.
 case "$KERN" in
-    Linux|GNU*|*BSD|DragonFly|Bitrig)
-    ;;
-    *) echo 'Unknown OS detected!' \
-            "'${KERN}' currently not supported yet." >&2
-       exit 1
-    ;;
+  Linux|GNU*|*BSD|DragonFly|Bitrig)
+  ;;
+  *) echo 'Unknown OS detected!' \
+          "'${KERN}' currently not supported yet." >&2
+     exit 1
+  ;;
 esac
 
-getUser()
-{
-    HOST="${HOST:-${HOSTNAME}}"
-    HOST="${HOST:-$(hostname 2>/dev/null)}"
+getUser() {
+  HOST="${HOST:-${HOSTNAME}}"
+  HOST="${HOST:-$(hostname 2>/dev/null)}"
 
-    printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
+  printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
 }
 
-getDistro()
-{
-    if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
-        PRETTY_NAME='Bedrock Linux'
-    elif [ -f '/etc/os-release' ]; then
-        . /etc/os-release
-    else
-        PRETTY_NAME='Unknown'
-    fi
-
-    printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME}}" "$MACH"
-}
-
-getKernel()
-{
-    printf "${c5}${*}  ${c7}%s" "${KVER:-Unknown}"
-}
-
-getWM()
-{
-    if [ -n "$DESKTOP_SESSION" ]; then
-        DE="${DESKTOP_SESSION##*/}"
-    elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
-        DE='GNOME'
-    elif [ -n "$MATE_DESKTOP_SESSION_ID" ]; then
-        DE='MATE'
-    elif [ -n "$TDE_FULL_SESSION" ]; then
-        DE='Trinity'
-    elif [ -x "$(command -v xprop)" ]; then
-        XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)"
-        XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)"
-        WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}"
-        WM="${WM%%\"*}"
-    fi
-
-    if [ -z "${DE:-${WM}}" ]; then
-
-        case "$KERN" in
-            *OpenBSD*) PS_FLAGS='x -c'
-            ;;
-            *        ) PS_FLAGS='-e'
-            ;;
-        esac
-
-        WM="$(ps ${PS_FLAGS} | grep -m1 -Fo \
-                                    -e arcan \
-                                    -e asc \
-                                    -e clayland \
-                                    -e dwc \
-                                    -e fireplace \
-                                    -e gnome-shell \
-                                    -e greenfield \
-                                    -e grefsen \
-                                    -e hikari \
-                                    -e kwin \
-                                    -e lipstick \
-                                    -e maynard \
-                                    -e mazecompositor \
-                                    -e motorcar \
-                                    -e orbital \
-                                    -e orbment \
-                                    -e perceptia \
-                                    -e river \
-                                    -e rustland \
-                                    -e sway \
-                                    -e ulubis \
-                                    -e velox \
-                                    -e wavy \
-                                    -e way-cooler \
-                                    -e wayfire \
-                                    -e wayhouse \
-                                    -e westeros \
-                                    -e westford \
-                                    -e weston
-            )"
-
-    fi
-
-    DE_WM="${DE:-${WM}}"
-
-    printf "${c5}${*}  ${c7}%s" "${DE_WM:-Unknown}"
-}
-
-getPackages()
-{
-    for MANAGER in apt \
-                   dnf \
-                   emerge \
-                   nix-env \
-                   pacman \
-                   rpm \
-                   xbps-query
-    do
-        if [ -x "$(command -v "$MANAGER")" ]; then
-            PKG_MNGR="$MANAGER"
-            break
-        fi
+getDistro() {
+  if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
+    PRETTY_NAME='Bedrock Linux'
+  elif [ -f '/etc/os-release' ] || [ -f '/usr/lib/os-release' ]; then
+    for file in /etc/os-release /usr/lib/os-release; do
+      . $file && break
     done
+  else
+    PRETTY_NAME='Unknown'
+  fi
 
-    case "$PKG_MNGR" in
-        apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
-        ;;
-        dnf       ) GET_PKGS="$(dnf list installed)"
-        ;;
-        emerge    ) GET_PKGS="$(printf '%s\n' /var/db/pkg/*/*)"
-        ;;
-        nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
-                    PKG_MNGR='nix'
-        ;;
-        pacman    ) GET_PKGS="$(pacman -Qq)"
-        ;;
-        rpm       ) GET_PKGS="$(rpm -qa --last)"
-        ;;
-        xbps-query) GET_PKGS="$(xbps-query -l)"
-        ;;
-    esac
-
-    TOTAL_PKGS="$(wc -l <<- EOF
-					${GET_PKGS}
-				EOF
-                )"
-
-    case "$TOTAL_PKGS" in
-        0|1) TOTAL_PKGS='?'
-             PKG_MNGR='Unknown'
-        ;;
-    esac
-
-    printf "${c5}${*}  ${c7}%s (%s)" "$TOTAL_PKGS" "$PKG_MNGR"
+  printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME}}" "$MACH"
 }
 
-getUptime()
-{
-    IFS=. read -r s _ </proc/uptime
-
-    # Convert uptime into readable value.
-    d="$((s / 60 / 60 / 24))"
-    h="$((s / 60 / 60 % 24))"
-    m="$((s / 60 % 60))"
-
-    # Plurals.
-    [ "$d" -gt 1 ] && dp=s
-    [ "$h" -gt 1 ] && hp=s
-    [ "$m" -gt 1 ] && mp=s
-    [ "$s" -gt 1 ] && sp=s
-
-    # Hide empty fields and make the output of uptime smaller.
-    [ "$d" -eq 0 ] || UPTIME="${d} day${dp}, "
-    [ "$h" -eq 0 ] || UPTIME="${UPTIME}${h} hour${hp}, "
-    [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
-    [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
-
-    printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
+getKernel() {
+  printf "${c5}${*}  ${c7}%s" "${KVER:-Unknown}"
 }
 
-getPalette()
-{
-    printf "\033[9%sm${*}  \033[0m" 1 2 3 4 5 6
+getWM() {
+  if [ -n "$XDG_CURRENT_DESKTOP" ] || [ -n "$DESKTOP_SESSION" ]; then
+    DE="${XDG_CURRENT_DESKTOP#*:-${DESKTOP_SESSION##*/}}"
+  elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
+    DE='GNOME'
+  elif [ -n "$MATE_DESKTOP_SESSION_ID" ]; then
+    DE='MATE'
+  elif [ -n "$TDE_FULL_SESSION" ]; then
+    DE='Trinity'
+  elif [ -x "$(command -v xprop)" ]; then
+    XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)"
+    XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)"
+    WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}"
+    WM="${WM%%\"*}"
+  fi
+
+  if [ -z "${DE:-${WM}}" ]; then
+
+    case "$KERN" in
+      *OpenBSD*) PS_FLAGS='x -c'
+      ;;
+      *        ) PS_FLAGS='-e'
+      ;;
+    esac
+
+    WM="$(ps ${PS_FLAGS} | grep -m1 -Fo \
+                                -e arcan \
+                                -e asc \
+                                -e clayland \
+                                -e dwc \
+                                -e fireplace \
+                                -e gnome-shell \
+                                -e greenfield \
+                                -e grefsen \
+                                -e hikari \
+                                -e kwin \
+                                -e lipstick \
+                                -e maynard \
+                                -e mazecompositor \
+                                -e motorcar \
+                                -e orbital \
+                                -e orbment \
+                                -e perceptia \
+                                -e river \
+                                -e rustland \
+                                -e sway \
+                                -e ulubis \
+                                -e velox \
+                                -e wavy \
+                                -e way-cooler \
+                                -e wayfire \
+                                -e wayhouse \
+                                -e westeros \
+                                -e westford \
+                                -e weston
+    )"
+
+  fi
+
+  DE_WM="${DE:-${WM}}"
+
+  printf "${c5}${*}  ${c7}%s" "${DE_WM:-Unknown}"
+}
+
+getPackages() {
+  for MANAGER in apt \
+                 dnf \
+                 emerge \
+                 nix-env \
+                 pacman \
+                 rpm \
+                 xbps-query
+  do
+    if [ -x "$(command -v "$MANAGER")" ]; then
+      PKG_MNGR="$MANAGER"
+      break
+    fi
+  done
+
+  case "$PKG_MNGR" in
+    apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
+    ;;
+    dnf       ) GET_PKGS="$(dnf list installed)"
+    ;;
+    emerge    ) GET_PKGS="$(printf '%s\n' /var/db/pkg/*/*)"
+    ;;
+    nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
+                PKG_MNGR='nix'
+    ;;
+    pacman    ) GET_PKGS="$(pacman -Qq)"
+    ;;
+    rpm       ) GET_PKGS="$(rpm -qa --last)"
+    ;;
+    xbps-query) GET_PKGS="$(xbps-query -l)"
+    ;;
+  esac
+
+  TOTAL_PKGS="$(wc -l <<- EOF
+			${GET_PKGS}
+		EOF
+  )"
+
+  case "$TOTAL_PKGS" in
+    0|1) TOTAL_PKGS='?'
+         PKG_MNGR='Unknown'
+    ;;
+  esac
+
+  printf "${c5}${*}  ${c7}%s (%s)" "$TOTAL_PKGS" "$PKG_MNGR"
+}
+
+getUptime() {
+  IFS=. read -r s _ </proc/uptime
+
+  # Convert uptime into readable value.
+  d="$((s / 60 / 60 / 24))"
+  h="$((s / 60 / 60 % 24))"
+  m="$((s / 60 % 60))"
+
+  # Plurals.
+  [ "$d" -gt 1 ] && dp=s
+  [ "$h" -gt 1 ] && hp=s
+  [ "$m" -gt 1 ] && mp=s
+  [ "$s" -gt 1 ] && sp=s
+
+  # Hide empty fields and make the output of uptime smaller.
+  [ "$d" -eq 0 ] || UPTIME="${d} day${dp}, "
+  [ "$h" -eq 0 ] || UPTIME="${UPTIME}${h} hour${hp}, "
+  [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
+  [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
+
+  printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
+}
+
+getPalette() {
+  printf "\033[9%sm${*}  \033[0m" 1 2 3 4 5 6
 }
 
 # ANSI colour sequences.
