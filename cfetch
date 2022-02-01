@@ -4,12 +4,6 @@
 LC_ALL=C
 LANG=C
 
-### Stop fetch if user is using Mac
-if [ $(uname) = "Darwin" ]; then
-	printf "No MacOS support yet"
-	exit 0
-fi
-
 ### Get System Info
 getUser() {
   printf "${c4}$(whoami)${c1}@${c2}$(hostname)"
