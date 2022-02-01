@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Dont use unicode
-export LC_ALL=C
-export LANG=C
+LC_ALL=C
+LANG=C
 
 ### Stop fetch if user is using Mac
 if [ $(uname) = "Darwin" ]; then
@@ -55,9 +55,9 @@ getPackages() {
     packages="None"
   fi
 
-  if [ $manager == "nix-env" ]; then
-    manager="nix"
-  fi
+	if [ $manager == "nix-env" ]; then
+		manager="nix"
+	fi
 
   printf "${c5}  ${c7}%s (%s)" "$packages" "$manager"
 }
@@ -95,10 +95,10 @@ getUptime() {
 
 getPalette() {
   for i in 1 2 3 4 5 6; do
-    printf "[9%sm%s" "$i" "   "
-  done
+		printf "[9%sm%s" "$i" "   "
+	done
 
-  printf "%s" "[0m"
+	printf "%s" "[0m"
 }
 
 ### Colors Variable
