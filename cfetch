@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# shellcheck disable=SC3028,SC2166,SC2009,SC2034
+# shellcheck disable=SC3028,SC2166,SC2009,SC2034,SC2086
 
 # Ensure all binaries are executable, unalias all.
 unalias -a
@@ -32,8 +32,7 @@ case "$KERN" in
 esac
 
 getUser() {
-  HOST="${HOST:-${HOSTNAME}}"
-  HOST="${HOST:-$(hostname 2>/dev/null)}"
+  HOST="${HOST:-${HOSTNAME:-$(hostname 2>/dev/null)}}"
 
   printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
 }
@@ -41,15 +40,14 @@ getUser() {
 getDistro() {
   if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
     PRETTY_NAME='Bedrock Linux'
-  elif [ -f '/etc/os-release' ] || [ -f '/usr/lib/os-release' ]; then
-    for file in /etc/os-release /usr/lib/os-release; do
-      . $file && break
-    done
   else
-    PRETTY_NAME='Unknown'
+    # shellcheck source=/etc/os-release source=/usr/lib/os-release
+    for FILE in /etc/os-release /usr/lib/os-release; do
+      . "$FILE" 2>/dev/null && break
+    done
   fi
 
-  printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME}}" "$MACH"
+  printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME:-Unknown}}" "$MACH"
 }
 
 getKernel() {
@@ -57,8 +55,8 @@ getKernel() {
 }
 
 getWM() {
-  if [ -n "$XDG_CURRENT_DESKTOP" ] || [ -n "$DESKTOP_SESSION" ]; then
-    DE="${XDG_CURRENT_DESKTOP#*:-${DESKTOP_SESSION##*/}}"
+  if [ -n "$XDG_CURRENT_DESKTOP" -o -n "$DESKTOP_SESSION" ]; then
+    DE="${XDG_CURRENT_DESKTOP#*:-"${DESKTOP_SESSION##*/}"}"
   elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
     DE='GNOME'
   elif [ -n "$MATE_DESKTOP_SESSION_ID" ]; then
@@ -115,9 +113,7 @@ getWM() {
 
   fi
 
-  DE_WM="${DE:-${WM}}"
-
-  printf "${c5}${*}  ${c7}%s" "${DE_WM:-Unknown}"
+  printf "${c5}${*}  ${c7}%s" "${DE:-${WM:-Unknown}}"
 }
 
 getPackages() {
