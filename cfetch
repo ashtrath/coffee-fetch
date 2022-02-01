@@ -135,12 +135,14 @@ getPackages() {
     fi
   done
 
+  count_params() { echo "${#}"; }
+
   case "$PKG_MNGR" in
     apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
     ;;
     dnf       ) GET_PKGS="$(dnf list installed)"
     ;;
-    emerge    ) GET_PKGS="$(printf '%s\n' /var/db/pkg/*/*)"
+    emerge    ) GET_PKGS='/var/db/pkg/*/*'
     ;;
     nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
                 PKG_MNGR='nix'
@@ -153,14 +155,11 @@ getPackages() {
     ;;
   esac
 
-  TOTAL_PKGS="$(wc -l <<- EOF
-			${GET_PKGS}
-		EOF
-  )"
+  TOTAL_PKGS="$(count_params ${GET_PKGS})"
 
   case "$TOTAL_PKGS" in
-    0|1) TOTAL_PKGS='?'
-         PKG_MNGR='Unknown'
+    0) TOTAL_PKGS='?'
+       PKG_MNGR='Unknown'
     ;;
   esac
 
