@@ -1,123 +1,234 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
-# Dont use unicode
-LC_ALL=C
-LANG=C
+# shellcheck disable=SC3028,SC2166,SC2009,SC2034
 
-### Get System Info
-getUser() {
-  printf "${c4}$(whoami)${c1}@${c2}$(hostname)"
+# Ensure all binaries are executable, unalias all.
+unalias -a
+
+# Disable UTF-8 to speeds up script execution.
+export LANG='POSIX'
+
+# Parse kernel, version, and machine architecture.
+for STRING in $(uname -mrs); do
+    N=$((N+1))
+    case "$N" in
+        1) KERN="$STRING"
+        ;;
+        2) KVER="$STRING"
+        ;;
+        3) MACH="$STRING"
+        ;;
+    esac
+done
+
+# Determine current OS.
+case "$KERN" in
+    Linux|GNU*|*BSD|DragonFly|Bitrig)
+    ;;
+    *) echo 'Unknown OS detected!' \
+            "'${KERN}' currently not supported yet." >&2
+       exit 1
+    ;;
+esac
+
+getUser()
+{
+    HOST="${HOST:-${HOSTNAME}}"
+    HOST="${HOST:-$(hostname 2>/dev/null)}"
+
+    printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
 }
 
-getDistro() {
-  arch="$(uname -m)"
-  if [[ -f /bedrock/etc/bedrock-release && -z $BEDROCK_RESTRICT ]]; then
-    distro="Bedrock Linux"
-  else
-    while IFS='=' read -r key val; do
-      case $key in
-        PRETTY_NAME) distro=$val ;;
-      esac
-    done < /etc/os-release
-  fi
+getDistro()
+{
+    if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
+        PRETTY_NAME='Bedrock Linux'
+    elif [ -f '/etc/os-release' ]; then
+        . /etc/os-release
+    else
+        PRETTY_NAME='Unknown'
+    fi
 
-  printf "${c5}  ${c7}%s" "$distro $arch"
+    printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME}}" "$MACH"
 }
 
-getKernel() {
-  printf "${c5}  ${c7}%s" "$(uname -r)"
+getKernel()
+{
+    printf "${c5}${*}  ${c7}%s" "${KVER:-Unknown}"
 }
 
-getWM() {
-  printf "${c5}  ${c7}%s" "${XDG_CURRENT_DESKTOP#*:-$DESKTOP_SESSION}"
+getWM()
+{
+    if [ -n "$DESKTOP_SESSION" ]; then
+        DE="${DESKTOP_SESSION##*/}"
+    elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
+        DE='GNOME'
+    elif [ -n "$MATE_DESKTOP_SESSION_ID" ]; then
+        DE='MATE'
+    elif [ -n "$TDE_FULL_SESSION" ]; then
+        DE='Trinity'
+    elif [ -x "$(command -v xprop)" ]; then
+        XPROP_ID="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)"
+        XPROP_WM="$(xprop -id "${XPROP_ID##*#\ }" -notype _NET_WM_NAME)"
+        WM="${XPROP_WM##*_NET_WM_NAME\ =\ \"}"
+        WM="${WM%%\"*}"
+    fi
+
+    if [ -z "${DE:-${WM}}" ]; then
+
+        case "$KERN" in
+            *OpenBSD*) PS_FLAGS='x -c'
+            ;;
+            *        ) PS_FLAGS='-e'
+            ;;
+        esac
+
+        WM="$(ps ${PS_FLAGS} | grep -m1 -Fo \
+                                    -e arcan \
+                                    -e asc \
+                                    -e clayland \
+                                    -e dwc \
+                                    -e fireplace \
+                                    -e gnome-shell \
+                                    -e greenfield \
+                                    -e grefsen \
+                                    -e hikari \
+                                    -e kwin \
+                                    -e lipstick \
+                                    -e maynard \
+                                    -e mazecompositor \
+                                    -e motorcar \
+                                    -e orbital \
+                                    -e orbment \
+                                    -e perceptia \
+                                    -e river \
+                                    -e rustland \
+                                    -e sway \
+                                    -e ulubis \
+                                    -e velox \
+                                    -e wavy \
+                                    -e way-cooler \
+                                    -e wayfire \
+                                    -e wayhouse \
+                                    -e westeros \
+                                    -e westford \
+                                    -e weston
+            )"
+
+    fi
+
+    DE_WM="${DE:-${WM}}"
+
+    printf "${c5}${*}  ${c7}%s" "${DE_WM:-Unknown}"
 }
 
-getPackages() {
-  manager=$(which \pacman nix-env xbps-query apt dnf rpm 2> /dev/null)
-  manager=${manager##*/}
+getPackages()
+{
+    for MANAGER in apt \
+                   dnf \
+                   emerge \
+                   nix-env \
+                   pacman \
+                   rpm \
+                   xbps-query
+    do
+        if [ -x "$(command -v "$MANAGER")" ]; then
+            PKG_MNGR="$MANAGER"
+            break
+        fi
+    done
 
-  case $manager in
-    pacman) packages="$(pacman -Qq | wc -l)" ;;
-    nix-env) packages="$(nix-store -q --requisites /run/current-system/sw | wc -l)" ;;
-    xbps-query) packages="$(xbps-query -l | wc -l)" ;;
-    apt) packages="$(dpkg-query -f '${binary:Package}\n' -W | wc -l)" ;;
-    dnf) packages="$(dnf list installed | wc -l)" ;;
-    rpm) packages="$(rpm -qa --last| wc -l)" ;;
-  esac
+    case "$PKG_MNGR" in
+        apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
+        ;;
+        dnf       ) GET_PKGS="$(dnf list installed)"
+        ;;
+        emerge    ) GET_PKGS="$(printf '%s\n' /var/db/pkg/*/*)"
+        ;;
+        nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
+                    PKG_MNGR='nix'
+        ;;
+        pacman    ) GET_PKGS="$(pacman -Qq)"
+        ;;
+        rpm       ) GET_PKGS="$(rpm -qa --last)"
+        ;;
+        xbps-query) GET_PKGS="$(xbps-query -l)"
+        ;;
+    esac
 
-  if ((packages == 0)); then
-    packages="None"
-  fi
+    TOTAL_PKGS="$(wc -l <<- EOF
+					${GET_PKGS}
+				EOF
+                )"
 
-	if [ $manager == "nix-env" ]; then
-		manager="nix"
-	fi
+    case "$TOTAL_PKGS" in
+        0|1) TOTAL_PKGS='?'
+             PKG_MNGR='Unknown'
+        ;;
+    esac
 
-  printf "${c5}  ${c7}%s (%s)" "$packages" "$manager"
+    printf "${c5}${*}  ${c7}%s (%s)" "$TOTAL_PKGS" "$PKG_MNGR"
 }
 
+getUptime()
+{
+    IFS=. read -r s _ </proc/uptime
 
-getUptime() {
-  IFS=. read -r s _ < /proc/uptime 
+    # Convert uptime into readable value.
+    d="$((s / 60 / 60 / 24))"
+    h="$((s / 60 / 60 % 24))"
+    m="$((s / 60 % 60))"
 
-  # Convert uptime to readable value
-  d="$((s / 60 / 60 / 24))"
-  h="$((s / 60 / 60 % 24))"
-  m="$((s / 60 % 60))"
+    # Plurals.
+    [ "$d" -gt 1 ] && dp=s
+    [ "$h" -gt 1 ] && hp=s
+    [ "$m" -gt 1 ] && mp=s
+    [ "$s" -gt 1 ] && sp=s
 
-  # Plurals
-  [ "$d" -gt 1 ] && dp=s
-  [ "$h" -gt 1 ] && hp=s
-  [ "$m" -gt 1 ] && mp=s
-  [ "$s" -gt 1 ] && sp=s
+    # Hide empty fields and make the output of uptime smaller.
+    [ "$d" -eq 0 ] || UPTIME="${d} day${dp}, "
+    [ "$h" -eq 0 ] || UPTIME="${UPTIME}${h} hour${hp}, "
+    [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
+    [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
 
-  # Hide empty fields.
-  [ "$d" = 0 ] && d=
-  [ "$h" = 0 ] && h=
-  [ "$m" = 0 ] && m=
-  [ "$m" != "" ] && s=
-
-  # Make the output of uptime smaller.
-  [ "$d" ] && uptime="$d day$dp, "
-  [ "$h" ] && uptime="$uptime$h hour$hp, "
-  [ "$m" ] && uptime="$uptime$m min$mp"
-  [ "$s" ] && uptime="$uptime$s sec$sp"
-
-  uptime=${uptime%, }
-  printf "${c5}  ${c7}%s" "$uptime"
+    printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
 }
 
-getPalette() {
-  for i in 1 2 3 4 5 6; do
-		printf "[9%sm%s" "$i" "   "
-	done
-
-	printf "%s" "[0m"
+getPalette()
+{
+    printf "\033[9%sm${*}  \033[0m" 1 2 3 4 5 6
 }
 
-### Colors Variable
-bo='\e[1m'  #bold
-c0='\e[30m' #black
-c1='\e[31m' #red
-c2='\e[32m' #green
-c3='\e[33m' #yellow
-c4='\e[34m' #blue
-c5='\e[35m' #magenta
-c6='\e[36m' #cyan
-c7='\e[37m' #white
-c8='\e[90m' #grey
-rs='\e[0m'  #reset
+# ANSI colour sequences.
+bo='\033[1m'     # Bold.
+c0='\033[30m'    # Black.
+c1='\033[31m'    # Red.
+c2='\033[32m'    # Green.
+c3='\033[33m'    # Yellow.
+c4='\033[34m'    # Blue.
+c5='\033[35m'    # Magenta.
+c6='\033[36m'    # Cyan.
+c7='\033[37m'    # White.
+c8='\033[90m'    # Grey.
+rs='\033[0m'     # Reset.
+bb="${bo} ${c4}" # Bold blue.
+bg="${bo} ${c2}" # Bold green.
 
-bb="$bo $c4" #bold blue
-bg="$bo $c2" #bold green
-
-### Print Fetch
-printf "
+# Print ASCII coffee and relax.
+printf                 "
 ${bb}    ) )     ${bo}%s
-${bb}   ( (      ${bo}%s
-${bg} ........   ${bo}%s
-${bg} |      |]  ${bo}%s
-${bg} \      /   ${bo}%s
-${bg}  '____'    ${bo}%s
-             %s
-" "$(getUser)" "$(getDistro)" "$(getKernel)" "$(getWM)" "$(getPackages)" "$(getUptime)" "$(getPalette)"
+${bb}   ( (      ${rs}%s
+${bg} ........   ${rs}%s
+${bg} |      |]  ${rs}%s
+${bg} \      /   ${rs}%s
+${bg}  '____'    ${rs}%s
+             %s      \n" \
+"$(getUser            )" \
+"$(getDistro     ''  )" \
+"$(getKernel     ''  )" \
+"$(getWM         ''  )" \
+"$(getPackages   ''  )" \
+"$(getUptime     ''  )" \
+"$(getPalette    ''  )"
+
+exit ${?}
