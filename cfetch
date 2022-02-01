@@ -172,7 +172,7 @@ getPackages()
 
 getUptime()
 {
-    IFS=. read -r s _ </proc/uptime 
+    IFS=. read -r s _ </proc/uptime
 
     # Convert uptime into readable value.
     d="$((s / 60 / 60 / 24))"
@@ -185,17 +185,11 @@ getUptime()
     [ "$m" -gt 1 ] && mp=s
     [ "$s" -gt 1 ] && sp=s
 
-    # Hide empty fields.
-    [ "$d" -eq 0 ] && d=
-    [ "$h" -eq 0 ] && h=
-    [ "$m" -eq 0 ] && m=
-    [  -n  "$m"  ] && s=
-
-    # Make the output of uptime smaller.
-    [ -n "$d" ] && UPTIME="${d} day${dp}, "
-    [ -n "$h" ] && UPTIME="${UPTIME}${h} hour${hp}, "
-    [ -n "$m" ] && UPTIME="${UPTIME}${m} min${mp}"
-    [ -n "$s" ] && UPTIME="${UPTIME}${s} sec${sp}"
+    # Hide empty fields and make the output of uptime smaller.
+    [ "$d" -eq 0 ] || UPTIME="${d} day${dp}, "
+    [ "$h" -eq 0 ] || UPTIME="${UPTIME}${h} hour${hp}, "
+    [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
+    [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
 
     printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
 }
