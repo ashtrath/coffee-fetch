@@ -11,8 +11,12 @@ Execution time is really important for me, thats why i made this simple fetching
 
 ## Installation
 ```sh
-sudo curl -fsSl https://raw.githubusercontent.com/Dyzean/coffee-fetch/main/cfetch -o /usr/bin/cfetch
-sudo chmod +x /usr/bin/cfetch
+# Curl `cfetch` into your PATH e.g ~/.local/bin and give execute permissions.
+install -m755 /dev/stdin ~/.local/bin/cfetch << CFETCH
+$(curl -sL https://raw.githubusercontent.com/Dyzean/coffee-fetch/main/cfetch)
+CFETCH
+
+# Prepare your coffee and relax.
 cfetch
 ```
 
