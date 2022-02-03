@@ -168,26 +168,9 @@ getPackages() {
 }
 
 getUptime() {
-  IFS=. read -r s _ </proc/uptime
+  UPTIME="$(uptime -p)" 
 
-  # Convert uptime into readable value.
-  d="$((s / 60 / 60 / 24))"
-  h="$((s / 60 / 60 % 24))"
-  m="$((s / 60 % 60))"
-
-  # Plurals.
-  [ "$d" -gt 1 ] && dp=s
-  [ "$h" -gt 1 ] && hp=s
-  [ "$m" -gt 1 ] && mp=s
-  [ "$s" -gt 1 ] && sp=s
-
-  # Hide empty fields and make the output of uptime smaller.
-  [ "$d" -eq 0 ] || UPTIME="${d} day${dp}, "
-  [ "$h" -eq 0 ] || UPTIME="${UPTIME}${h} hour${hp}, "
-  [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
-  [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
-
-  printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
+  printf "${c5}${*}  ${c7}%s" "${UPTIME}"
 }
 
 getPalette() {
