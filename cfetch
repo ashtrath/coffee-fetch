@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# shellcheck disable=SC3028,SC2166,SC2009,SC2034
+# shellcheck disable=SC3028,SC2166,SC2009,SC2034,SC2086
 
 # Ensure all binaries are executable, unalias all.
 unalias -a
@@ -32,8 +32,7 @@ case "$KERN" in
 esac
 
 getUser() {
-  HOST="${HOST:-${HOSTNAME}}"
-  HOST="${HOST:-$(hostname 2>/dev/null)}"
+  HOST="${HOST:-${HOSTNAME:-$(hostname 2>/dev/null)}}"
 
   printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
 }
@@ -41,15 +40,14 @@ getUser() {
 getDistro() {
   if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
     PRETTY_NAME='Bedrock Linux'
-  elif [ -f '/etc/os-release' ] || [ -f '/usr/lib/os-release' ]; then
-    for file in /etc/os-release /usr/lib/os-release; do
-      . $file && break
-    done
   else
-    PRETTY_NAME='Unknown'
+    # shellcheck source=/etc/os-release source=/usr/lib/os-release
+    for FILE in /etc/os-release /usr/lib/os-release; do
+      [ -f "$FILE" ] && . "$FILE" && break
+    done
   fi
 
-  printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME}}" "$MACH"
+  printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME:-Unknown}}" "$MACH"
 }
 
 getKernel() {
@@ -57,8 +55,8 @@ getKernel() {
 }
 
 getWM() {
-  if [ -n "$XDG_CURRENT_DESKTOP" ] || [ -n "$DESKTOP_SESSION" ]; then
-    DE="${XDG_CURRENT_DESKTOP#*:-${DESKTOP_SESSION##*/}}"
+  if [ -n "$XDG_CURRENT_DESKTOP" -o -n "$DESKTOP_SESSION" ]; then
+    DE="${XDG_CURRENT_DESKTOP#*:-"${DESKTOP_SESSION##*/}"}"
   elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
     DE='GNOME'
   elif [ -n "$MATE_DESKTOP_SESSION_ID" ]; then
@@ -115,56 +113,69 @@ getWM() {
 
   fi
 
-  DE_WM="${DE:-${WM}}"
-
-  printf "${c5}${*}  ${c7}%s" "${DE_WM:-Unknown}"
+  printf "${c5}${*}  ${c7}%s" "${DE:-${WM:-Unknown}}"
 }
 
 getPackages() {
-  for MANAGER in apt \
-                 dnf \
-                 emerge \
-                 nix-env \
-                 pacman \
-                 rpm \
-                 xbps-query
+
+  # Blazing fast installed-package counter.
+  count_params() { echo "${#}"; }
+
+  # Verify system-installed package manager.
+  for PM in apt \
+            dnf \
+            emerge \
+            nix-env \
+            pacman \
+            rpm \
+            xbps-query
   do
-    if [ -x "$(command -v "$MANAGER")" ]; then
-      PKG_MNGR="$MANAGER"
-      break
-    fi
+    [ -x "$(command -v "$PM")" ] && PKG_MANAGER="${PKG_MANAGER} ${PM}"
   done
 
-  case "$PKG_MNGR" in
-    apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
-    ;;
-    dnf       ) GET_PKGS="$(dnf list installed)"
-    ;;
-    emerge    ) GET_PKGS="$(printf '%s\n' /var/db/pkg/*/*)"
-    ;;
-    nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
-                PKG_MNGR='nix'
-    ;;
-    pacman    ) GET_PKGS="$(pacman -Qq)"
-    ;;
-    rpm       ) GET_PKGS="$(rpm -qa --last)"
-    ;;
-    xbps-query) GET_PKGS="$(xbps-query -l)"
-    ;;
-  esac
+  # Count installed packages for each package manager.
+  for MANAGER in ${PKG_MANAGER#\ }; do
 
-  TOTAL_PKGS="$(wc -l <<- EOF
-			${GET_PKGS}
-		EOF
-  )"
+    # Get/query installed packages.
+    # Note that if the system contains directories of installed packages,
+    # it's highly recommended to use "glob" as `emerge` below.
+    case "$MANAGER" in
+      apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
+      ;;
+      dnf       ) GET_PKGS="$(dnf list installed)"
+      ;;
+      emerge    ) GET_PKGS='/var/db/pkg/*/*'
+      ;;
+      nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
+                  MANAGER='nix' # Make the NixOS package manager as "nix".
+      ;;
+      pacman    ) GET_PKGS="$(pacman -Qq)"
+      ;;
+      rpm       ) GET_PKGS="$(rpm -qa --last)"
+      ;;
+      xbps-query) GET_PKGS="$(xbps-query -l)"
+      ;;
+    esac
 
-  case "$TOTAL_PKGS" in
-    0|1) TOTAL_PKGS='?'
-         PKG_MNGR='Unknown'
-    ;;
-  esac
+    # Count all queried packages.
+    TOTAL_PKGS="$(count_params ${GET_PKGS})"
 
-  printf "${c5}${*}  ${c7}%s (%s)" "$TOTAL_PKGS" "$PKG_MNGR"
+    # If only zero or one package is installed,
+    # make the package manager looks unrecognized.
+    case "$TOTAL_PKGS" in
+      0|1) TOTAL_PKGS='?'
+           MANAGER='Unknown'
+      ;;
+    esac
+
+    # Preserve information across package managers.
+    PKGS_INFO="${PKGS_INFO}${TOTAL_PKGS} (${MANAGER}), "
+
+  done
+
+  # Show packages information.
+  printf "${c5}${*}  ${c7}%s" "${PKGS_INFO%,\ }"
+
 }
 
 getUptime() {
