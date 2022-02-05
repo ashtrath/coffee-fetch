@@ -43,7 +43,7 @@ getDistro() {
   else
     # shellcheck source=/etc/os-release source=/usr/lib/os-release
     for FILE in /etc/os-release /usr/lib/os-release; do
-      . "$FILE" 2>/dev/null && break
+      [ -f "$FILE" ] && . "$FILE" && break
     done
   fi
 
