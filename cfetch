@@ -117,49 +117,65 @@ getWM() {
 }
 
 getPackages() {
-  for MANAGER in apt \
-                 dnf \
-                 emerge \
-                 nix-env \
-                 pacman \
-                 rpm \
-                 xbps-query
-  do
-    if [ -x "$(command -v "$MANAGER")" ]; then
-      PKG_MNGR="$MANAGER"
-      break
-    fi
-  done
 
+  # Blazing fast installed-package counter.
   count_params() { echo "${#}"; }
 
-  case "$PKG_MNGR" in
-    apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
-    ;;
-    dnf       ) GET_PKGS="$(dnf list installed)"
-    ;;
-    emerge    ) GET_PKGS='/var/db/pkg/*/*'
-    ;;
-    nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
-                PKG_MNGR='nix'
-    ;;
-    pacman    ) GET_PKGS="$(pacman -Qq)"
-    ;;
-    rpm       ) GET_PKGS="$(rpm -qa --last)"
-    ;;
-    xbps-query) GET_PKGS="$(xbps-query -l)"
-    ;;
-  esac
+  # Verify system-installed package manager.
+  for PM in apt \
+            dnf \
+            emerge \
+            nix-env \
+            pacman \
+            rpm \
+            xbps-query
+  do
+    [ -x "$(command -v "$PM")" ] && PKG_MANAGER="${PKG_MANAGER} ${PM}"
+  done
 
-  TOTAL_PKGS="$(count_params ${GET_PKGS})"
+  # Count installed packages for each package manager.
+  for MANAGER in ${PKG_MANAGER#\ }; do
 
-  case "$TOTAL_PKGS" in
-    0) TOTAL_PKGS='?'
-       PKG_MNGR='Unknown'
-    ;;
-  esac
+    # Get/query installed packages.
+    # Note that if the system contains directories of installed packages,
+    # it's highly recommended to use "glob" as `emerge` below.
+    case "$MANAGER" in
+      apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
+      ;;
+      dnf       ) GET_PKGS="$(dnf list installed)"
+      ;;
+      emerge    ) GET_PKGS='/var/db/pkg/*/*'
+      ;;
+      nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
+                  MANAGER='nix' # Make the NixOS package manager as "nix".
+      ;;
+      pacman    ) GET_PKGS="$(pacman -Qq)"
+      ;;
+      rpm       ) GET_PKGS="$(rpm -qa --last)"
+      ;;
+      xbps-query) GET_PKGS="$(xbps-query -l)"
+      ;;
+    esac
 
-  printf "${c5}${*}  ${c7}%s (%s)" "$TOTAL_PKGS" "$PKG_MNGR"
+    # Count all queried packages.
+    TOTAL_PKGS="$(count_params ${GET_PKGS})"
+
+    # If only zero or one package is installed,
+    # make the package manager looks unrecognized.
+    case "$TOTAL_PKGS" in
+      0|1) TOTAL_PKGS='?'
+           MANAGER='Unknown'
+      ;;
+    esac
+
+    # Preserve information across package managers.
+    PKGS_INFO="${PKGS_INFO}${TOTAL_PKGS} (${MANAGER}), "
+
+  done
+
+  # Show packages information.
+  printf "${c5}${*}  ${c7}%s" "${PKGS_INFO%,\ }"
+
 }
 
 getUptime() {
