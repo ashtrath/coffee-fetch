@@ -2,9 +2,6 @@
 
 # shellcheck disable=SC3028,SC2166,SC2009,SC2034,SC2086
 
-# Ensure all binaries are executable, unalias all.
-unalias -a
-
 # Disable UTF-8 to speeds up script execution.
 export LANG='POSIX'
 
@@ -138,7 +135,8 @@ getPackages() {
 
     # Get/query installed packages.
     # Note that if the system contains directories of installed packages,
-    # it's highly recommended to use "glob" as `emerge` below.
+    # it's highly recommended to use glob as `emerge` below. Assign PKG_XCPT
+    # to reduce TOTAL_PKGS if any unexpected files are included by globs.
     case "$MANAGER" in
       apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
       ;;
@@ -147,9 +145,12 @@ getPackages() {
       emerge    ) GET_PKGS='/var/db/pkg/*/*'
       ;;
       nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
-                  MANAGER='nix' # Make the NixOS package manager as "nix".
+                  # Make the NixOS package manager as "nix" to make it even better (?)
+                  MANAGER='nix'
       ;;
       pacman    ) GET_PKGS='/var/lib/pacman/local/*'
+                  # https://github.com/Dyzean/coffee-fetch/pull/4#issuecomment-1032521278
+                  PKG_XCPT=1
       ;;
       rpm       ) GET_PKGS="$(rpm -qa --last)"
       ;;
@@ -158,12 +159,7 @@ getPackages() {
     esac
 
     # Count all queried packages.
-    TOTAL_PKGS="$(count_params ${GET_PKGS})"
-
-    # Pacman adds extra one file on the directory, reduce it
-    if [ $MANAGER = 'pacman' ]; then
-      TOTAL_PKGS=$((TOTAL_PKGS - 1))
-    fi
+    TOTAL_PKGS="$(($(count_params ${GET_PKGS}) - PKG_XCPT))"
 
     # If only zero or one package is installed,
     # make the package manager looks unrecognized.
