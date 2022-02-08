@@ -160,6 +160,11 @@ getPackages() {
     # Count all queried packages.
     TOTAL_PKGS="$(count_params ${GET_PKGS})"
 
+    # Pacman adds extra one file on the directory, reduce it
+    if [ $MANAGER = 'pacman' ]; then
+      TOTAL_PKGS=$((TOTAL_PKGS - 1))
+    fi
+
     # If only zero or one package is installed,
     # make the package manager looks unrecognized.
     case "$TOTAL_PKGS" in
