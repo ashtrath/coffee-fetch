@@ -2,9 +2,6 @@
 
 # shellcheck disable=SC3028,SC2166,SC2009,SC2034,SC2086
 
-# Ensure all binaries are executable, unalias all.
-unalias -a
-
 # Disable UTF-8 to speeds up script execution.
 export LANG='POSIX'
 
