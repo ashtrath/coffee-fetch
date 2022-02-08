@@ -149,7 +149,7 @@ getPackages() {
       nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
                   MANAGER='nix' # Make the NixOS package manager as "nix".
       ;;
-      pacman    ) GET_PKGS="$(pacman -Qq)"
+      pacman    ) GET_PKGS='/var/lib/pacman/local/*'
       ;;
       rpm       ) GET_PKGS="$(rpm -qa --last)"
       ;;
@@ -159,6 +159,11 @@ getPackages() {
 
     # Count all queried packages.
     TOTAL_PKGS="$(count_params ${GET_PKGS})"
+
+    # Pacman adds extra one file on the directory, reduce it
+    if [ $MANAGER = 'pacman' ]; then
+      TOTAL_PKGS=$((TOTAL_PKGS - 1))
+    fi
 
     # If only zero or one package is installed,
     # make the package manager looks unrecognized.
