@@ -47,11 +47,11 @@ getDistro() {
     done
   fi
 
-  printf "${c5}${*}  ${c7}%s %s" "${PRETTY_NAME:-${NAME:-Unknown}}" "$MACH"
+  printf "${c5}${*}  ${rs}%s %s" "${PRETTY_NAME:-${NAME:-Unknown}}" "$MACH"
 }
 
 getKernel() {
-  printf "${c5}${*}  ${c7}%s" "${KVER:-Unknown}"
+  printf "${c5}${*}  ${rs}%s" "${KVER:-Unknown}"
 }
 
 getWM() {
@@ -113,7 +113,7 @@ getWM() {
 
   fi
 
-  printf "${c5}${*}  ${c7}%s" "${DE:-${WM:-Unknown}}"
+  printf "${c5}${*}  ${rs}%s" "${DE:-${WM:-Unknown}}"
 }
 
 getPackages() {
@@ -174,7 +174,7 @@ getPackages() {
   done
 
   # Show packages information.
-  printf "${c5}${*}  ${c7}%s" "${PKGS_INFO%,\ }"
+  printf "${c5}${*}  ${rs}%s" "${PKGS_INFO%,\ }"
 
 }
 
@@ -198,7 +198,7 @@ getUptime() {
   [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
   [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
 
-  printf "${c5}${*}  ${c7}%s" "${UPTIME%,\ }"
+  printf "${c5}${*}  ${rs}%s" "${UPTIME%,\ }"
 }
 
 getPalette() {
