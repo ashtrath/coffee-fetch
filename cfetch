@@ -149,7 +149,7 @@ getPackages() {
       nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
                   MANAGER='nix' # Make the NixOS package manager as "nix".
       ;;
-      pacman    ) GET_PKGS="$(pacman -Qq)"
+      pacman    ) GET_PKGS='/var/lib/pacman/local/*'
       ;;
       rpm       ) GET_PKGS="$(rpm -qa --last)"
       ;;
