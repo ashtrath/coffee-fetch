@@ -1,12 +1,13 @@
-<p align="center">
-  <img src="cfetch.png" style="border-radius: 8px;">
-</p>
-<h1 align="center"> coffee-fetch </h1>
+<div align="center">
+	<h1>coffee-fetch</h1>
+	<img src="cfetch.png" width="350px">
+</div>
+<br>
 
-Yet another fetching tool written in POSIX shell.
-
+Your generic fetching tool written in POSIX shell.
+<br>
 Why i made this? Cause [neofetch](https://github.com/dylanaraps/neofetch) is slow *(Yes, i put neofetch on my shellrc.)*
-
+<br>
 Execution time is really important for me, thats why i made this simple fetching tool.
 
 ## Installation
