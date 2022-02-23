@@ -115,9 +115,6 @@ getWM() {
 
 getPackages() {
 
-  # Blazing fast installed-package counter.
-  count_params() { echo "${#}"; }
-
   # Verify system-installed package manager.
   for PM in apt \
             dnf \
@@ -159,7 +156,7 @@ getPackages() {
     esac
 
     # Count all queried packages.
-    TOTAL_PKGS="$(($(count_params ${GET_PKGS}) - PKG_XCPT))"
+    TOTAL_PKGS="$(($(set -- ${GET_PKGS}; echo "${#}") - PKG_XCPT))"
 
     # If only zero or one package is installed,
     # make the package manager looks unrecognized.
