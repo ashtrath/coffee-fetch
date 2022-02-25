@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+# SPDX-License-Identifier: MIT
+
 # shellcheck disable=SC3028,SC2166,SC2009,SC2034,SC2086
 
 # Disable UTF-8 to speeds up script execution.
@@ -29,12 +31,18 @@ case "$KERN" in
 esac
 
 getUser() {
+
+  # Get hostname. $HOST > $HOSTNAME > `hostname` > `uname -n`
   HOST="${HOST:-${HOSTNAME:-$(hostname 2>/dev/null)}}"
 
+  # Show hostname and active-user information. $USER > `id -nu`
   printf "${c4}%s${c1}@${c2}%s" "${USER:-$(id -nu)}" "${HOST:-$(uname -n)}"
+
 }
 
 getDistro() {
+
+  # Parse OSes identification-data.
   if [ -f '/bedrock/etc/bedrock-release' -a -z "$BEDROCK_RESTRICT" ]; then
     PRETTY_NAME='Bedrock Linux'
   else
@@ -44,14 +52,22 @@ getDistro() {
     done
   fi
 
+  # Show OS name and built-architecture information. $PRETTY_NAME > $NAME
   printf "${c5}${*}  ${rs}%s %s" "${PRETTY_NAME:-${NAME:-Unknown}}" "$MACH"
+
 }
 
 getKernel() {
+
+  # Show currently booted kernel information.
   printf "${c5}${*}  ${rs}%s" "${KVER:-Unknown}"
+
 }
 
 getWM() {
+
+  # Get current DE sessions through available environment variables,
+  # `xprop` is as fallback for EWMH-compliant WMs.
   if [ -n "$XDG_CURRENT_DESKTOP" -o -n "$DESKTOP_SESSION" ]; then
     DE="${XDG_CURRENT_DESKTOP#*:-"${DESKTOP_SESSION##*/}"}"
   elif [ -n "$GNOME_DESKTOP_SESSION_ID" ]; then
@@ -67,6 +83,7 @@ getWM() {
     WM="${WM%%\"*}"
   fi
 
+  # Fallback via process checker for unavailable DEs and non EWMH-compliant WMs.
   if [ -z "${DE:-${WM}}" ]; then
 
     case "$KERN" in
@@ -110,7 +127,9 @@ getWM() {
 
   fi
 
+  # Show DE/WMs session information. $DE > $WM
   printf "${c5}${*}  ${rs}%s" "${DE:-${WM:-Unknown}}"
+
 }
 
 getPackages() {
@@ -177,6 +196,8 @@ getPackages() {
 }
 
 getUptime() {
+
+  # Parse the system-uptime since boot.
   IFS=. read -r s _ </proc/uptime
 
   # Convert uptime into readable value.
@@ -196,11 +217,16 @@ getUptime() {
   [ "$m" -eq 0 ] || UPTIME="${UPTIME}${m} min${mp}"
   [  -n  "$m"  ] || UPTIME="${UPTIME}${s} sec${sp}"
 
+  # Show system-uptime information.
   printf "${c5}${*}  ${rs}%s" "${UPTIME%,\ }"
+
 }
 
 getPalette() {
+
+  # Print color palette using escape sequences with custom glyph.
   printf "\033[9%sm${*}  \033[0m" 1 2 3 4 5 6
+
 }
 
 # ANSI colour sequences.
