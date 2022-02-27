@@ -139,9 +139,9 @@ getPackages() {
             dnf \
             emerge \
             nix-env \
-            pacman \
             rpm \
-            xbps-query
+            xbps-query \
+            kiss
   do
     [ -x "$(command -v "$PM")" ] && PKG_MANAGER="${PKG_MANAGER} ${PM}"
   done
@@ -154,7 +154,7 @@ getPackages() {
     # it's highly recommended to use glob as `emerge` below. Assign PKG_XCPT
     # to reduce TOTAL_PKGS if any unexpected files are included by globs.
     case "$MANAGER" in
-      apt       ) GET_PKGS="$(dpkg-query -f '${binary:Package}\n' -W)"
+      apt       ) GET_PKGS='/var/lib/dpkg/info/*.list'
       ;;
       dnf       ) GET_PKGS="$(dnf list installed)"
       ;;
@@ -164,13 +164,14 @@ getPackages() {
                   # Make the NixOS package manager as "nix" to make it even better (?)
                   MANAGER='nix'
       ;;
-      pacman    ) GET_PKGS='/var/lib/pacman/local/*'
-                  # https://github.com/Dyzean/coffee-fetch/pull/4#issuecomment-1032521278
-                  PKG_XCPT=1
+      pacman    ) GET_PKGS='/var/lib/pacman/local/[0-9a-z]*'
+                  # This already exclude 'ALPM_DB_VERSION' files get included by globs.
       ;;
       rpm       ) GET_PKGS="$(rpm -qa --last)"
       ;;
-      xbps-query) GET_PKGS="$(xbps-query -l)"
+      xbps-query) GET_PKGS='/var/db/xbps/.*'
+      ;;
+      kiss      ) GET_PKGS='/var/db/kiss/installed/*'
       ;;
     esac
 
@@ -262,3 +263,4 @@ ${bg}  '____'    ${rs}%s
 "$(getPalette    ''  )"
 
 exit ${?}
+# vim:ft=sh:nowrap
