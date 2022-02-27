@@ -139,6 +139,7 @@ getPackages() {
             dnf \
             emerge \
             nix-env \
+            pacman \
             rpm \
             xbps-query \
             kiss
