@@ -138,6 +138,7 @@ getPackages() {
   for PM in apt \
             dnf \
             emerge \
+            flatpak \
             nix-env \
             pacman \
             rpm \
@@ -160,6 +161,8 @@ getPackages() {
       dnf       ) GET_PKGS="$(dnf list installed)"
       ;;
       emerge    ) GET_PKGS='/var/db/pkg/*/*'
+      ;;
+      flatpak   ) GET_PKGS="$(flatpak --columns=app list)"
       ;;
       nix-env   ) GET_PKGS="$(nix-store -q --requisites /run/current-system/sw)"
                   # Make the NixOS package manager as "nix" to make it even better (?)
